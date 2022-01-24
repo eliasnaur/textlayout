@@ -38,9 +38,14 @@ func (fs fixedSizeFields) generateParser(sliceName string, returnVars string) st
 	pos := 0
 	for _, field := range fs {
 		readCode := readBasicType(sliceName, field.size, pos)
-		// TODO: support constructor
-		constructor := field.field.Type().String()
-		code += fmt.Sprintf("out.%s = %s(%s)\n", field.field.Name(), constructor, readCode)
+
+		if field.customConstructor {
+			code += fmt.Sprintf("out.%s.fromUint(%s)\n", field.field.Name(), readCode)
+		} else {
+			constructor := field.field.Type().String()
+			code += fmt.Sprintf("out.%s = %s(%s)\n", field.field.Name(), constructor, readCode)
+		}
+
 		pos += field.size
 	}
 

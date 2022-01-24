@@ -34,9 +34,13 @@ func (fs fixedSizeFields) generateWriter(sliceName, objectName string) string {
 
 	pos := 0
 	for _, field := range fs {
-		writeCode := writeBasicType("dst", fmt.Sprintf("%s.%s", objectName, field.field.Name()), field.size, pos)
-		// TODO: support constructor
-		// constructor := field.field.Type().String()
+		var accesVar string
+		if field.customConstructor {
+			accesVar = fmt.Sprintf("%s.%s.toUint()", objectName, field.field.Name())
+		} else {
+			accesVar = fmt.Sprintf("%s.%s", objectName, field.field.Name())
+		}
+		writeCode := writeBasicType("dst", accesVar, field.size, pos)
 		code += writeCode + "\n"
 		pos += field.size
 	}

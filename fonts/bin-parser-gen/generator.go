@@ -98,8 +98,9 @@ func generateCodeForScope(scope *types.Scope) string {
 
 // how the type is written as binary
 type fixedSizeField struct {
-	field *types.Var
-	size  int
+	field             *types.Var
+	size              int
+	customConstructor bool // optional conversion methods
 }
 
 const (
@@ -125,12 +126,43 @@ func getBinaryLayout(t *types.Basic) (int, bool) {
 	}
 }
 
+// return the new binary layout, or 0
+func hasConstructor(ty types.Type) int {
+	// a type with a method is a named type
+	named, ok := ty.(*types.Named)
+	if !ok {
+		return 0
+	}
+
+	for i := 0; i < named.NumMethods(); i++ {
+		meth := named.Method(i)
+		if meth.Name() == "fromUint" {
+			arg := meth.Type().(*types.Signature).Params().At(0).Type().Underlying()
+			if basic, ok := arg.(*types.Basic); ok {
+				if layout, ok := getBinaryLayout(basic); ok {
+					return layout
+				}
+			}
+		}
+	}
+
+	return 0
+}
+
 type fixedSizeFields []fixedSizeField
 
 func fixedSizeFromStruct(st *types.Struct) fixedSizeFields {
 	var fixedSize fixedSizeFields
 	for i := 0; i < st.NumFields(); i++ {
 		field := st.Field(i)
+
+		layout := hasConstructor(field.Type())
+		if layout != 0 { // overide underlying basic info
+			fixedSize = append(fixedSize, fixedSizeField{
+				field: field, size: layout, customConstructor: true,
+			})
+			continue
+		}
 		switch fieldType := field.Type().Underlying().(type) {
 		case *types.Basic:
 			size, ok := getBinaryLayout(fieldType)

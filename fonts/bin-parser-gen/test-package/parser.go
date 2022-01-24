@@ -9,8 +9,8 @@ import (
 
 func parseLookup(data []byte) (lookup, error) {
 	var out lookup
-	if L := len(data); L < 26 {
-		return lookup{}, fmt.Errorf("EOF: expected length: 26, got %d", L)
+	if L := len(data); L < 32 {
+		return lookup{}, fmt.Errorf("EOF: expected length: 32, got %d", L)
 	}
 	out.a = int32(binary.BigEndian.Uint32(data[0:4]))
 	out.b = int32(binary.BigEndian.Uint32(data[4:8]))
@@ -19,13 +19,15 @@ func parseLookup(data []byte) (lookup, error) {
 	out.e = int64(binary.BigEndian.Uint64(data[16:24]))
 	out.g = byte(data[24])
 	out.h = byte(data[25])
+	out.fl.fromUint(binary.BigEndian.Uint16(data[26:28]))
+	out.fl2.fromUint(binary.BigEndian.Uint32(data[28:32]))
 
 	return out, nil
 }
 
 func (item lookup) write(data []byte) []byte {
 	L := len(data)
-	data = append(data, make([]byte, 26)...)
+	data = append(data, make([]byte, 32)...)
 	dst := data[L:]
 	binary.BigEndian.PutUint32(dst[0:], uint32(item.a))
 	binary.BigEndian.PutUint32(dst[4:], uint32(item.b))
@@ -34,6 +36,8 @@ func (item lookup) write(data []byte) []byte {
 	binary.BigEndian.PutUint64(dst[16:], uint64(item.e))
 	dst[24] = byte(item.g)
 	dst[25] = byte(item.h)
+	binary.BigEndian.PutUint16(dst[26:], uint16(item.fl.toUint()))
+	binary.BigEndian.PutUint32(dst[28:], uint32(item.fl2.toUint()))
 
 	return data
 }
